@@ -598,7 +598,8 @@ class ParserLattes(HTMLParser):
                             iessimaAtuacaoProfissional = AtuacaoProfissional(self.idMembro, self.partesDoItem) # criamos um objeto com a lista correspondentes às celulas da linha
                             self.listaAtuacaoProfissional.append(iessimaAtuacaoProfissional) # acrescentamos o objeto de AtuacaoProfissional
                         else:
-                            print(f"DEBUG: Ignored AtuacaoProfissional item: {self.partesDoItem}")
+                            pass
+                            # print(f"DEBUG: Ignored AtuacaoProfissional item: {self.partesDoItem}")
 
                     if self.achouProjetoDePesquisa:
                         if not self.salvarParte3:

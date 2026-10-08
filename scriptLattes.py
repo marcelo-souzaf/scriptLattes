@@ -33,14 +33,16 @@ def executar_scriptLattes(arquivoConfiguracao):
 
     if criarDiretorio(novoGrupo.obterParametro('global-diretorio_de_saida')):
         novoGrupo.carregarDadosCVLattes() #obrigatorio
-        novoGrupo.compilarListasDeItems() # obrigatorio
-        novoGrupo.gerarGrafosDeColaboracoes() # obrigatorio
-        novoGrupo.gerarPaginasWeb() # obrigatorio
-        novoGrupo.gerarArquivosTemporarios() # obrigatorio
+        if not novoGrupo.obterParametro('global-desativar_relatorio'):
+            novoGrupo.compilarListasDeItems() # obrigatorio
+            novoGrupo.gerarGrafosDeColaboracoes() # obrigatorio
+            novoGrupo.gerarPaginasWeb() # obrigatorio
+            novoGrupo.gerarArquivosTemporarios() # obrigatorio
+            # copiar css
+            copiarArquivos(novoGrupo.obterParametro('global-diretorio_de_saida'))
+
         novoGrupo.gerarArquivosJSONIndividuais() # gerar JSON individual por pesquisador
 
-        # copiar css
-        copiarArquivos(novoGrupo.obterParametro('global-diretorio_de_saida'))
 
         # finalizando o processo
         print ('\n[PARA REFERENCIAR/CITAR ESTE SOFTWARE USE] \n\

@@ -14,16 +14,11 @@ try:
 except ImportError:
     bs4 = None
 
-try:
-    from selenium import webdriver
-    from selenium.common.exceptions import InvalidArgumentException, TimeoutException, WebDriverException
-    from selenium.webdriver.chrome.service import Service
-except ImportError:
-    webdriver = None
-    InvalidArgumentException = None
-    TimeoutException = None
-    WebDriverException = None
-    Service = None
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 
 import platform
 import warnings
@@ -44,7 +39,6 @@ class LattesRobot:
         #self.ua = UserAgent()
         self.identifiers = set()
         self.downloaded_identifiers = set()
-        self.sleep_time = 4
         self.lid_type = -1
         self.initialize()
 
@@ -81,16 +75,23 @@ class LattesRobot:
         else:
             print('Sistema Operacional não identificado')
             
-        service = Service(chrome_driver_path)
+        # service = Service(chrome_driver_path)
  
         try:
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            # self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            self.driver = webdriver.Chrome(options=chrome_options)
         except Exception as e:
             print(f"Erro ao inicializar o driver: {e}")
 
+    def collect_html_cv(self, identifier):
+        self.lid_type = len(identifier)
+        lids = self._get_lids_10_16(identifier)
+
+        if lids[10]:
+            self._execute_js(lids)
 
     def collect_html_cvs(self, start, end):
-        total_lids = len(list(self.identifiers)[start:end])
+        # total_lids = len(list(self.identifiers)[start:end])
 
         for identifier in sorted(self.identifiers)[start:end]:
             lids = self._get_lids_10_16(identifier)
@@ -114,12 +115,15 @@ class LattesRobot:
 
     def _execute_js(self, lids):
         self.driver.get(URL.format(lids[10]))
-        time.sleep(self.sleep_time)
+        wait = WebDriverWait(self.driver, timeout=10, poll_frequency=0.25)
 
+        handle = self.driver.current_window_handle
         cmd_open_cv = 'abreCV()'
         self.driver.execute_script(cmd_open_cv)
-        time.sleep(self.sleep_time)
 
+        wait.until(EC.number_of_windows_to_be(2))
+        self.driver.switch_to.window(handle)
+        self.driver.close()
         self.driver.switch_to.window(self.driver.window_handles[-1])
 
         if not lids[16]:
@@ -131,6 +135,10 @@ class LattesRobot:
 
         self.store_html(lids[self.lid_type], self.driver.page_source)
 
+    def open_tab(self):
+        handle = self.driver.current_window_handle
+        self.driver.switch_to.new_window('tab')
+        self.driver.switch_to.window(handle)
 
 
     def _get_lids_10_16(self, lid):
@@ -143,7 +151,12 @@ class LattesRobot:
             lids[16] = lid
 
             self.driver.get(URL_LATTES_ID16.format(lid))
-            lid10 = urllib.parse.parse_qs(urllib.parse.urlparse(self.driver.current_url.encode()).query)[b'id'][0].decode('utf-8')
+            url = self.driver.current_url
+            parsed = urllib.parse.parse_qs(urllib.parse.urlparse(url.encode()).query)
+            try:
+                lid10 = parsed[b'id'][0].decode('utf-8')
+            except KeyError:
+                raise RuntimeError(f"Erro ao acessar o CV Lattes com ID {lid}. URL retornada: {url}") from None
 
             if len(lid10) == 10:
                 lids[10] = lid10
@@ -166,24 +179,32 @@ class LattesRobot:
 
     def _set_lid_type(self):
         if len(self.identifiers) > 0:
-            ld = len(list(self.identifiers)[0])
+            ld = len(next(iter(self.identifiers)))
             self.lid_type = ld
 
 
-def __get_data(id_lattes, diretorio):
-    rob = LattesRobot(driver_path="./chromedriver", results_dir=diretorio)
-    print(f"Baixando CV Lattes: {id_lattes}. Este processo pode demorar alguns segundos.")
-    rob.load_codes(id_lattes)
-    rob.check_downloaded_cvs()
-    rob.create_driver()
+_rob: LattesRobot | None = None
 
-    try:
-        #logging.info('Collecting cvs (there are %d cvs to be collected)...' % len(rob.identifiers))
-        rob.collect_html_cvs(0, None)
-    #except KeyboardInterrupt:
-    #    logging.info('Execution was interrupted')
-    finally:
-        rob.driver.quit()
+
+def __get_data(id_lattes, diretorio):
+    global _rob
+    if _rob is None:
+        _rob = LattesRobot(driver_path="./chromedriver", results_dir=diretorio)
+        _rob.create_driver()
+        _rob.check_downloaded_cvs()
+
+    print(f"Baixando CV Lattes: {id_lattes}. Este processo pode demorar alguns segundos.")
+    # _rob.load_codes(id_lattes)
+    # _rob.collect_html_cvs(0, None)
+    _rob.collect_html_cv(id_lattes)
+
+    # try:
+    #     #logging.info('Collecting cvs (there are %d cvs to be collected)...' % len(rob.identifiers))
+    #     _rob.collect_html_cvs(0, None)
+    # #except KeyboardInterrupt:
+    # #    logging.info('Execution was interrupted')
+    # finally:
+    #     _rob.driver.quit()
 
 
 def baixaCVLattes(id_lattes, diretorio ):

@@ -31,7 +31,7 @@ class AtuacaoProfissional:
         self.idMembro.add(idMembro)
 
         if partesDoItem:
-            print(f"DEBUG: AtuacaoProfissional partesDoItem: {partesDoItem}")
+            # print(f"DEBUG: AtuacaoProfissional partesDoItem: {partesDoItem}")
             # partesDoItem[0]: Pode ser periodo ou numero
             # partesDoItem[1]: Descricao
             self.item = partesDoItem[1]

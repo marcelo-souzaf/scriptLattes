@@ -157,22 +157,34 @@ class Membro:
                     print(("[AVISO IMPORTANTE] CV Lattes: {}. Membro: {}\n".format(self.idLattes,
                                                                                   self.nomeInicial.encode('utf8'))))
 
-    def carregarDadosCVLattes(self):
+    def garantirDadosCVLattes(self):
         cvPath = self.diretorioCache + '/' + self.idLattes
+        if os.path.exists(cvPath):
+            if self.idMembro!='':
+                print("Utilizando CV armazenado no cache: " + cvPath)
+        else:
+            print("Baixando CV no cache: "+cvPath)
+            baixaCVLattes(self.idLattes, self.diretorioCache)
+
+    def carregarDadosCVLattes(self):
         cvPath = self.diretorioCache + '/' + self.idLattes
 
         if os.path.exists(cvPath):
             #arquivoH = open(cvPath, encoding='iso-8859-1')
             arquivoH = open(cvPath, encoding='utf8')
             cvLattesHTML = arquivoH.read()
-            if self.idMembro!='':
-                print("Utilizando CV armazenado no cache: "+cvPath)
+            # if self.idMembro!='':
+            #     print("Utilizando CV armazenado no cache: "+cvPath)
         else:
-            print("Baixando CV no cache: "+cvPath)
-            baixaCVLattes(self.idLattes, self.diretorioCache)
-            #arquivoH = open(cvPath, encoding='iso-8859-1')            
-            arquivoH = open(cvPath, encoding='utf8')
-            cvLattesHTML = arquivoH.read()
+            return 
+        #     print("Baixando CV no cache: "+cvPath)
+        #     baixaCVLattes(self.idLattes, self.diretorioCache)
+        #     #arquivoH = open(cvPath, encoding='iso-8859-1')            
+        #     arquivoH = open(cvPath, encoding='utf8')
+        #     cvLattesHTML = arquivoH.read()
+
+        arquivoH = open(cvPath, encoding='utf8')
+        cvLattesHTML = arquivoH.read()
 
         extended_chars = ''.join(chr(c) for c in range(127, 65536, 1))  # srange(r"[\0x80-\0x7FF]")
         special_chars = ' -'''

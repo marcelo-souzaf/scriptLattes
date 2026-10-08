@@ -7,6 +7,9 @@ import fileinput
 import json
 import re
 import os
+
+from pathlib import Path
+
 from scriptLattes.util import *
 
 def separar_tipo_instituicao(instituicao_completa):
@@ -708,7 +711,9 @@ class Grupo:
             # Nome do arquivo baseado no nome do pesquisador (sanitizado)
             nome_arquivo = re.sub(r'[^\w\s-]', '', membro.nomeCompleto.strip())
             nome_arquivo = re.sub(r'[-\s]+', '-', nome_arquivo)
-            nome_arquivo = f"{membro.idMembro:02d}_{nome_arquivo}_{membro.idLattes}.json"
+            preenchimento = len(str(len(self.listaDeMembros)))
+
+            nome_arquivo = f"{membro.idMembro:0{preenchimento}d}_{nome_arquivo}_{membro.idLattes}.json"
             
             caminho_arquivo = os.path.join(json_dir, nome_arquivo)
             
@@ -795,14 +800,39 @@ class Grupo:
 
 
     def carregarDadosCVLattes(self):
-        indice = 1
+        falhas = []
+
+        path = Path(self.obterParametro('global-diretorio_de_saida'), 'progresso.txt')
+        retomar_progresso = self.obterParametro('global-retomar_progresso')
+
+        if retomar_progresso:
+            progresso = int(path.read_text(encoding='utf-8'))
+        else:
+            progresso = 0
+
         self.listaDeMembros: list[Membro]
-        for membro in self.listaDeMembros:
-            print(f'\n[LENDO REGISTRO LATTES: {indice}o. DA LISTA]')
-            indice += 1
-            membro.carregarDadosCVLattes()
+        for indice, membro in enumerate(self.listaDeMembros[progresso:], start=progresso + 1):
+            print(f'\n[OBTENDO DADOS LATTES: {indice}o. DA LISTA]')
+            try:
+                membro.garantirDadosCVLattes()
+                if retomar_progresso:
+                    path.write_text(str(indice), encoding='utf-8')
+            except RuntimeError as e:
+                print(f'   ✗ Erro ao carregar dados do CV Lattes de {membro.idLattes}: {str(e)}')
+
+        if retomar_progresso:
+            path.unlink()
+
+        for indice, membro in enumerate(self.listaDeMembros, start=1):
+            print(f'\n[CARREGANDO DADOS LATTES: {indice}o. DA LISTA]')
+            if not membro.carregarDadosCVLattes():
+                falhas.append(membro.idLattes)
+                continue
             membro.filtrarItemsPorPeriodoOuTermos()
-            print(membro)
+            # print(membro)
+
+        if falhas:
+            print(f'\nERROS AO CARREGAR DADOS LATTES:\n{"\n".join(falhas)}')
 
 
     def gerarPaginasWeb(self):
@@ -1067,6 +1097,8 @@ class Grupo:
         self.listaDeParametros.append(['global-itens_desde_o_ano', ''])
         self.listaDeParametros.append(['global-itens_ate_o_ano', ''])  # hoje
         self.listaDeParametros.append(['global-itens_por_pagina', '5000'])
+        self.listaDeParametros.append(['global-desativar_relatorio', 'nao'])
+        self.listaDeParametros.append(['global-retomar_progresso', 'nao'])
         self.listaDeParametros.append(['global-diretorio_de_armazenamento_de_cvs', './cache/'])
 
         self.listaDeParametros.append(['global-identificar_producoes_por_termos', 'nao'])
